@@ -151,7 +151,8 @@ void EngineDLL::Hook(const std::wstring& moduleName, HMODULE hModule, uintptr_t 
 		pMiddleOfSV_InitGameDLL = NULL,
 		//p_Host_RunFrame = NULL,
 		//pSV_Frame = NULL,
-		pRecord = NULL;
+		pRecord = NULL,
+		pDemo_TogglePause = NULL;
 
 	auto fActivateServer = std::async(std::launch::async, MemUtils::FindUniqueSequence, moduleStart, moduleLength, Patterns::ptnsSV_ActivateServer, &pSV_ActivateServer);
 	auto fFinishRestore = std::async(std::launch::async, MemUtils::FindUniqueSequence, moduleStart, moduleLength, Patterns::ptnsFinishRestore, &pFinishRestore);
@@ -160,6 +161,7 @@ void EngineDLL::Hook(const std::wstring& moduleName, HMODULE hModule, uintptr_t 
 	//auto f_Host_RunFrame = std::async(std::launch::async, MemUtils::FindUniqueSequence, moduleStart, moduleLength, Patterns::ptns_Host_RunFrame, &p_Host_RunFrame);
 	//auto fSV_Frame = std::async(std::launch::async, MemUtils::FindUniqueSequence, moduleStart, moduleLength, Patterns::ptnsSV_Frame, &pSV_Frame);
 	auto fRecord = std::async(std::launch::async, MemUtils::FindUniqueSequence, moduleStart, moduleLength, Patterns::ptnsRecord, &pRecord);
+	auto fDemo_TogglePause = std::async(std::launch::async, MemUtils::FindUniqueSequence, moduleStart, moduleLength, Patterns::ptnsDemo_TogglePause, &pDemo_TogglePause);
 
 	// m_bLoadgame and pGameServer (&sv)
 	ptnNumber = MemUtils::FindUniqueSequence(moduleStart, moduleLength, Patterns::ptnsSpawnPlayer, &pSpawnPlayer);
@@ -336,9 +338,16 @@ void EngineDLL::Hook(const std::wstring& moduleName, HMODULE hModule, uintptr_t 
 		EngineDevMsg("Found record at %p (using the build %s pattern).\n", pRecord, Patterns::ptnsRecord[ptnNumber].build.c_str());
 		EngineDevMsg("Found demoplayer at %p.\n", pDemoplayer);
 	}
+	else if (ptnNumber = fDemo_TogglePause.get(), pDemo_TogglePause)
+	{
+		pDemoplayer = *reinterpret_cast<void***>(pDemo_TogglePause + 2);
+
+		EngineDevMsg("Found demo_togglepause at %p (using the build %s pattern).\n", pDemo_TogglePause, Patterns::ptnsDemo_TogglePause[ptnNumber].build.c_str());
+		EngineDevMsg("Found demoplayer at %p.\n", pDemoplayer);
+	}
 	else
 	{
-		EngineDevWarning("Could not find record!\n");
+		EngineDevWarning("Could find neither record nor demo_togglepause!\n");
 		EngineWarning("y_spt_pause_demo_on_tick is not available.\n");
 	}
 
