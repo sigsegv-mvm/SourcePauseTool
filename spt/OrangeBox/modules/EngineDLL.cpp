@@ -276,6 +276,10 @@ void EngineDLL::Hook(const std::wstring& moduleName, HMODULE hModule, uintptr_t 
 			break;
 
 		case 1:
+			pIntervalPerTick = *reinterpret_cast<float**>(pMiddleOfSV_InitGameDLL + 18);
+			break;
+
+		case 2:
 			pIntervalPerTick = *reinterpret_cast<float**>(pMiddleOfSV_InitGameDLL + 16);
 			break;
 		}
