@@ -4,7 +4,7 @@ SourcePauseTool
 A plugin for all your pausing needs.
 
 ## Usage
-Place the compiled `spt.dll` into your mod directory (for example: `hl2`, `portal`, `ep2`), launch the game and type `plugin_load spt` into the developer console. For older engines you will need to place `spt.dll` into the topmost `bin` directory (the one with a lot of different DLL files including `engine.dll`, *not* the one with `client.dll` and `server.dll`).
+Place the compiled `spt.dll` into your mod directory (for example: `hl2`, `portal`, `ep2`, `bms`), launch the game and type `plugin_load spt` into the developer console. For older engines you will need to place `spt.dll` into the topmost `bin` directory (the one with a lot of different DLL files including `engine.dll`, *not* the one with `client.dll` and `server.dll`).
 
 ## Building
 You will need Visual Studio 2017 or above.
@@ -17,3 +17,4 @@ You will need Visual Studio 2017 or above.
    - Release for Source SDK 2007
    - Release 2013 for Source SDK 2013
    - Release P2 for the Portal 2 SDK from alliedmodders.
+   - Release BMSRetail for the Black Mesa SDK from alliedmodders.
