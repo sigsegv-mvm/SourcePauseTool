@@ -207,7 +207,7 @@ bool CSourcePauseTool::Load( CreateInterfaceFn interfaceFactory, CreateInterface
 	ConVar_Register(0);
 #endif
 
-#ifndef P2
+#if !defined(P2) && !defined(BMSRETAIL)
 	auto ptr = interfaceFactory(VENGINE_CLIENT_INTERFACE_VERSION, NULL);
 #else
 	auto ptr = interfaceFactory("VEngineClient015", NULL);
