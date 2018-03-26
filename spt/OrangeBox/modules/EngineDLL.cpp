@@ -12,6 +12,92 @@
 using std::uintptr_t;
 using std::size_t;
 
+class CDemoFile;
+typedef struct netpacket_s netpacket_t;
+
+/**
+ * Definitions for the IDemoPlayer interface, to make it possible to safely and
+ * easily make vcalls into CDemoPlayer despite different engine versions'
+ * incompatible vtable layouts. (All without the need to do horrible stuff like
+ * directly dereferencing the vtable or using __fastcall for __thiscall funcs.)
+ */
+#if defined(SSDK2013) || defined(BMSRETAIL)
+/**
+ * Games based on Source 2013 (including modern Source mods, Team Fortress 2,
+ * Black Mesa Retail) use this updated IDemoPlayer interface definition. This
+ * exact interface was derived by reverse engineering the engine DLL's from
+ * Source SDK Base 2013 Singleplayer, Team Fortress 2, and Black Mesa Retail.
+ * The interface was found to be entirely consistent between those games, as of
+ * 2018 March 24.
+ */
+class IDemoPlayer
+{
+public:
+	virtual ~IDemoPlayer()                         = 0; // VTidx 0x00
+	virtual CDemoFile *GetDemoFile()               = 0; // VTidx 0x01
+	virtual int GetPlaybackStartTick()             = 0; // VTidx 0x02
+	virtual int GetPlaybackTick()                  = 0; // VTidx 0x03
+	virtual int GetTotalTicks()                    = 0; // VTidx 0x04
+	virtual bool StartPlayback(const char *, bool) = 0; // VTidx 0x05
+	virtual bool IsPlayingBack()                   = 0; // VTidx 0x06
+	virtual bool IsPlaybackPaused()                = 0; // VTidx 0x07
+	virtual bool IsPlayingTimeDemo()               = 0; // VTidx 0x08
+	virtual bool IsSkipping()                      = 0; // VTidx 0x09
+	virtual bool CanSkipBackwards()                = 0; // VTidx 0x0A
+	virtual void SetPlaybackTimeScale(float)       = 0; // VTidx 0x0B
+	virtual float GetPlaybackTimeScale()           = 0; // VTidx 0x0C
+	virtual void PausePlayback(float)              = 0; // VTidx 0x0D
+	virtual void SkipToTick(int, bool, bool)       = 0; // VTidx 0x0E
+	virtual void SetEndTick(int)                   = 0; // VTidx 0x0F
+	virtual void ResumePlayback()                  = 0; // VTidx 0x10
+	virtual void StopPlayback()                    = 0; // VTidx 0x11
+	virtual void InterpolateViewpoint()            = 0; // VTidx 0x12
+	virtual netpacket_t *ReadPacket()              = 0; // VTidx 0x13
+	virtual void ResetDemoInterpolation()          = 0; // VTidx 0x14
+	virtual int GetProtocolVersion()               = 0; // VTidx 0x15
+	virtual bool ShouldLoopDemos()                 = 0; // VTidx 0x16
+	virtual void OnLastDemoInLoopPlayed()          = 0; // VTidx 0x17
+	virtual bool IsLoading()                       = 0; // VTidx 0x18
+	virtual void OnStopCommand()                   = 0; // VTidx 0x19
+};
+#else // OE, SSDK2007, P2
+/**
+ * Games based on older engines like Source 2006 or Source 2007, and even some
+ * newer ones such as Portal 2, use this original IDemoPlayer interface, which
+ * can be found in the Source 2007 engine source code in engine/demo.h.
+ */
+class IDemoPlayer
+{
+public:
+	virtual ~IDemoPlayer()                         = 0; // VTidx 0x00
+	virtual CDemoFile *GetDemoFile()               = 0; // VTidx 0x01
+	virtual int GetPlaybackTick()                  = 0; // VTidx 0x02
+	virtual int GetTotalTicks()                    = 0; // VTidx 0x03
+	virtual bool StartPlayback(const char *, bool) = 0; // VTidx 0x04
+	virtual bool IsPlayingBack()                   = 0; // VTidx 0x05
+	virtual bool IsPlaybackPaused()                = 0; // VTidx 0x06
+	virtual bool IsPlayingTimeDemo()               = 0; // VTidx 0x07
+	virtual bool IsSkipping()                      = 0; // VTidx 0x08
+	virtual bool CanSkipBackwards()                = 0; // VTidx 0x09
+	virtual void SetPlaybackTimeScale(float)       = 0; // VTidx 0x0A
+	virtual float GetPlaybackTimeScale()           = 0; // VTidx 0x0B
+	virtual void PausePlayback(float)              = 0; // VTidx 0x0C
+	virtual void SkipToTick(int, bool, bool)       = 0; // VTidx 0x0D
+	virtual void ResumePlayback()                  = 0; // VTidx 0x0E
+	virtual void StopPlayback()                    = 0; // VTidx 0x0F
+	virtual void InterpolateViewpoint()            = 0; // VTidx 0x10
+	virtual netpacket_t *ReadPacket()              = 0; // VTidx 0x11
+	virtual void ResetDemoInterpolation()          = 0; // VTidx 0x12
+};
+/**
+ * Note that there are YET MORE variations of IDemoPlayer in other games' engine
+ * branches; e.g. CS:GO's IDemoPlayer interface is radically different from both
+ * of the interface definitions shown above.
+ */
+#endif
+// sanity check for correct calling convention etc.
+static_assert(std::is_same_v<decltype(&IDemoPlayer::GetPlaybackTick), int (__thiscall IDemoPlayer::*)()>, "IDemoPlayer sanity check failed");
+
 bool __cdecl EngineDLL::HOOKED_SV_ActivateServer()
 {
 	return engineDLL.HOOKED_SV_ActivateServer_Func();
@@ -316,32 +402,32 @@ int EngineDLL::Demo_GetPlaybackTick() const
 {
 	if (!pDemoplayer)
 		return 0;
-	auto demoplayer = *pDemoplayer;
-	return (*reinterpret_cast<int(__fastcall ***)(void*)>(demoplayer))[2](demoplayer);
+	auto demoplayer = reinterpret_cast<IDemoPlayer*>(*pDemoplayer);
+	return demoplayer->GetPlaybackTick();
 }
 
 int EngineDLL::Demo_GetTotalTicks() const
 {
 	if (!pDemoplayer)
 		return 0;
-	auto demoplayer = *pDemoplayer;
-	return (*reinterpret_cast<int(__fastcall ***)(void*)>(demoplayer))[3](demoplayer);
+	auto demoplayer = reinterpret_cast<IDemoPlayer*>(*pDemoplayer);
+	return demoplayer->GetTotalTicks();
 }
 
 bool EngineDLL::Demo_IsPlayingBack() const
 {
 	if (!pDemoplayer)
 		return false;
-	auto demoplayer = *pDemoplayer;
-	return (*reinterpret_cast<bool(__fastcall ***)(void*)>(demoplayer))[5](demoplayer);
+	auto demoplayer = reinterpret_cast<IDemoPlayer*>(*pDemoplayer);
+	return demoplayer->IsPlayingBack();
 }
 
 bool EngineDLL::Demo_IsPlaybackPaused() const
 {
 	if (!pDemoplayer)
 		return false;
-	auto demoplayer = *pDemoplayer;
-	return (*reinterpret_cast<bool(__fastcall ***)(void*)>(demoplayer))[6](demoplayer);
+	auto demoplayer = reinterpret_cast<IDemoPlayer*>(*pDemoplayer);
+	return demoplayer->IsPlaybackPaused();
 }
 
 bool __cdecl EngineDLL::HOOKED_SV_ActivateServer_Func()
